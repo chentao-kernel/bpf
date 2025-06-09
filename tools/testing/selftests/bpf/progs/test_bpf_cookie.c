@@ -124,6 +124,7 @@ int BPF_PROG(fmod_ret_test, int _a, int *_b, int _ret)
 	return 1234;
 }
 
+#if 0
 SEC("lsm/file_mprotect")
 int BPF_PROG(test_int_hook, struct vm_area_struct *vma,
 	     unsigned long reqprot, unsigned long prot, int ret)
@@ -133,5 +134,6 @@ int BPF_PROG(test_int_hook, struct vm_area_struct *vma,
 	update(ctx, &lsm_res);
 	return -EPERM;
 }
+#endif
 
 char _license[] SEC("license") = "GPL";

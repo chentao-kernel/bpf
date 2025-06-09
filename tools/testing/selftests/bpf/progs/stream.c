@@ -5,7 +5,19 @@
 #include <bpf/bpf_helpers.h>
 #include "bpf_misc.h"
 #include "bpf_experimental.h"
-#include "bpf_arena_common.h"
+//#include "bpf_arena_common.h"
+
+#if defined(__BPF_FEATURE_ADDR_SPACE_CAST) && !defined(BPF_ARENA_FORCE_ASM)
+#define __arena __attribute__((address_space(1)))
+#define __arena_global __attribute__((address_space(1)))
+#define cast_kern(ptr) /* nop for bpf prog. emitted by LLVM */
+#define cast_user(ptr) /* nop for bpf prog. emitted by LLVM */
+#else
+#define __arena
+#define __arena_global SEC(".addr_space.1")
+#define cast_kern(ptr) bpf_addr_space_cast(ptr, 0, 1)
+#define cast_user(ptr) bpf_addr_space_cast(ptr, 1, 0)
+#endif
 
 struct arr_elem {
 	struct bpf_res_spin_lock lock;
