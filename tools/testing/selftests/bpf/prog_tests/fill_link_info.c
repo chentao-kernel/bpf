@@ -182,7 +182,7 @@ static void test_kprobe_fill_link_info(struct test_fill_link_info *skel,
 	} else {
 		kprobe_fill_invalid_user_buffer(link_fd);
 	}
-	bpf_link__destroy(link);
+	//bpf_link__destroy(link);
 }
 
 static void test_tp_fill_link_info(struct test_fill_link_info *skel)
@@ -200,7 +200,7 @@ static void test_tp_fill_link_info(struct test_fill_link_info *skel)
 	link_fd = bpf_link__fd(link);
 	err = verify_perf_link_info(link_fd, BPF_PERF_EVENT_TRACEPOINT, 0, 0, 0);
 	ASSERT_OK(err, "verify_perf_link_info");
-	bpf_link__destroy(link);
+	//bpf_link__destroy(link);
 }
 
 static void test_event_fill_link_info(struct test_fill_link_info *skel)
@@ -230,7 +230,7 @@ static void test_event_fill_link_info(struct test_fill_link_info *skel)
 	link_fd = bpf_link__fd(link);
 	err = verify_perf_link_info(link_fd, BPF_PERF_EVENT_EVENT, 0, 0, 0);
 	ASSERT_OK(err, "verify_perf_link_info");
-	bpf_link__destroy(link);
+	//bpf_link__destroy(link);
 
 error:
 	close(pfd);
@@ -266,7 +266,7 @@ static void test_uprobe_fill_link_info(struct test_fill_link_info *skel,
 	link_fd = bpf_link__fd(link);
 	err = verify_perf_link_info(link_fd, type, 0, uprobe_offset, *ref_ctr_offset);
 	ASSERT_OK(err, "verify_perf_link_info");
-	bpf_link__destroy(link);
+	//bpf_link__destroy(link);
 out:
 	free(ref_ctr_offset);
 }
@@ -393,7 +393,7 @@ static void test_kprobe_multi_fill_link_info(struct test_fill_link_info *skel,
 	} else {
 		verify_kmulti_invalid_user_buffer(link_fd);
 	}
-	bpf_link__destroy(link);
+	//bpf_link__destroy(link);
 }
 
 #define SEC(name) __attribute__((section(name), used))
@@ -626,6 +626,7 @@ void test_fill_link_info(void)
 	if (test__start_subtest("uretprobe_link_info"))
 		test_uprobe_fill_link_info(skel, BPF_PERF_EVENT_URETPROBE);
 
+	sleep(10000000);
 	qsort(kmulti_syms, KMULTI_CNT, sizeof(kmulti_syms[0]), symbols_cmp_r);
 	for (i = 0; i < KMULTI_CNT; i++)
 		kmulti_addrs[i] = ksym_get_addr(kmulti_syms[i]);
