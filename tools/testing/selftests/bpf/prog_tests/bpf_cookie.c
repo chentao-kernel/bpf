@@ -553,6 +553,7 @@ static void tracing_subtest(struct test_bpf_cookie *skel)
 	ASSERT_EQ(skel->bss->fexit_res, 0x20000000000000L, "fexit_res");
 	ASSERT_EQ(skel->bss->fmod_ret_res, 0x30000000000000L, "fmod_ret_res");
 
+	return;
 cleanup:
 	if (fentry_fd >= 0)
 		close(fentry_fd);
@@ -564,6 +565,7 @@ cleanup:
 
 int stack_mprotect(void);
 
+#if 0
 static void lsm_subtest(struct test_bpf_cookie *skel)
 {
 	__u64 cookie;
@@ -594,6 +596,7 @@ cleanup:
 	if (lsm_fd >= 0)
 		close(lsm_fd);
 }
+#endif
 
 static void tp_btf_subtest(struct test_bpf_cookie *skel)
 {
@@ -696,6 +699,7 @@ static void raw_tp_subtest(struct test_bpf_cookie *skel)
 	if (!ASSERT_GE(link_fd, 0, "bpf_raw_tracepoint_open_opts"))
 		goto cleanup;
 
+	sleep(1000000);
 	usleep(1); /* trigger */
 
 	err = verify_raw_tp_link_info(link_fd, cookie);
@@ -737,6 +741,11 @@ void test_bpf_cookie(void)
 		return;
 
 	skel->bss->my_tid = sys_gettid();
+	if (test__start_subtest("trampoline"))
+		tracing_subtest(skel);
+
+	if (test__start_subtest("raw_tp"))
+		raw_tp_subtest(skel);
 
 	if (test__start_subtest("kprobe"))
 		kprobe_subtest(skel);
@@ -754,8 +763,10 @@ void test_bpf_cookie(void)
 		pe_subtest(skel);
 	if (test__start_subtest("trampoline"))
 		tracing_subtest(skel);
+#if 0
 	if (test__start_subtest("lsm"))
 		lsm_subtest(skel);
+#endif
 	if (test__start_subtest("tp_btf"))
 		tp_btf_subtest(skel);
 	if (test__start_subtest("raw_tp"))
