@@ -169,8 +169,8 @@ static void kprobe_multi_link_api_subtest(void)
 	kprobe_multi_test_run(skel);
 
 cleanup:
-	close(link1_fd);
-	close(link2_fd);
+	//close(link1_fd);
+	//close(link2_fd);
 	kprobe_multi__destroy(skel);
 }
 
@@ -310,8 +310,8 @@ static void uprobe_multi_attach_api_subtest(void)
 	uprobe_multi_test_run(skel);
 
 cleanup:
-	bpf_link__destroy(link2);
-	bpf_link__destroy(link1);
+	//bpf_link__destroy(link2);
+	//bpf_link__destroy(link1);
 	uprobe_multi__destroy(skel);
 }
 
