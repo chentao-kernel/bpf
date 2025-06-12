@@ -169,8 +169,8 @@ static void kprobe_multi_link_api_subtest(void)
 	kprobe_multi_test_run(skel);
 
 cleanup:
-	close(link1_fd);
-	close(link2_fd);
+	//close(link1_fd);
+	//close(link2_fd);
 	kprobe_multi__destroy(skel);
 }
 
@@ -310,8 +310,8 @@ static void uprobe_multi_attach_api_subtest(void)
 	uprobe_multi_test_run(skel);
 
 cleanup:
-	bpf_link__destroy(link2);
-	bpf_link__destroy(link1);
+	//bpf_link__destroy(link2);
+	//bpf_link__destroy(link1);
 	uprobe_multi__destroy(skel);
 }
 
@@ -699,7 +699,6 @@ static void raw_tp_subtest(struct test_bpf_cookie *skel)
 	if (!ASSERT_GE(link_fd, 0, "bpf_raw_tracepoint_open_opts"))
 		goto cleanup;
 
-	sleep(1000000);
 	usleep(1); /* trigger */
 
 	err = verify_raw_tp_link_info(link_fd, cookie);
@@ -741,6 +740,16 @@ void test_bpf_cookie(void)
 		return;
 
 	skel->bss->my_tid = sys_gettid();
+
+	if (test__start_subtest("multi_kprobe_link_api"))
+		kprobe_multi_link_api_subtest();
+	if (test__start_subtest("multi_kprobe_attach_api"))
+		kprobe_multi_attach_api_subtest();
+	if (test__start_subtest("uprobe"))
+		uprobe_subtest(skel);
+	if (test__start_subtest("multi_uprobe_attach_api"))
+		uprobe_multi_attach_api_subtest();
+	sleep(100000000);
 	if (test__start_subtest("trampoline"))
 		tracing_subtest(skel);
 
