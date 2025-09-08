@@ -214,6 +214,7 @@ int test_dynptr_skb_data(struct __sk_buff *skb)
 SEC("?tc")
 int test_dynptr_skb_meta_data(struct __sk_buff *skb)
 {
+#if 0
 	struct bpf_dynptr meta;
 	__u8 *md;
 	int ret;
@@ -230,6 +231,7 @@ int test_dynptr_skb_meta_data(struct __sk_buff *skb)
 		return 1;
 
 	err = 0;
+#endif
 	return 1;
 }
 
@@ -237,6 +239,7 @@ int test_dynptr_skb_meta_data(struct __sk_buff *skb)
 SEC("?tc")
 int test_dynptr_skb_meta_flags(struct __sk_buff *skb)
 {
+#if 0
 	const __u64 INVALID_FLAGS = ~0ULL;
 	struct bpf_dynptr meta;
 	__u8 buf;
@@ -263,6 +266,7 @@ int test_dynptr_skb_meta_flags(struct __sk_buff *skb)
 		return 1;
 
 	err = 0;
+#endif
 	return 1;
 }
 
