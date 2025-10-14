@@ -14245,7 +14245,7 @@ int bpf_object__attach_skeleton(struct bpf_object_skeleton *s)
 
 void bpf_object__detach_skeleton(struct bpf_object_skeleton *s)
 {
-	int i;
+	int i = 0;
 
 	for (i = 0; i < s->prog_cnt; i++) {
 		struct bpf_prog_skeleton *prog_skel = (void *)s->progs + i * s->prog_skel_sz;
