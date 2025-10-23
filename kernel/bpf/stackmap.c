@@ -188,13 +188,13 @@ build_id_valid:
 }
 
 static struct perf_callchain_entry *
-get_callchain_entry_for_task(struct task_struct *task, u32 max_depth)
+get_callchain_entry_for_task(struct task_struct *task, u32 max_depth,
+			     int *rctx)
 {
 #ifdef CONFIG_STACKTRACE
 	struct perf_callchain_entry *entry;
-	int rctx;
 
-	entry = get_callchain_entry(&rctx);
+	entry = get_callchain_entry(rctx);
 
 	if (!entry)
 		return NULL;
@@ -215,8 +215,6 @@ get_callchain_entry_for_task(struct task_struct *task, u32 max_depth)
 		for (i = entry->nr - 1; i >= 0; i--)
 			to[i] = (u64)(from[i]);
 	}
-
-	put_callchain_entry(rctx);
 
 	return entry;
 #else /* CONFIG_STACKTRACE */
@@ -297,14 +295,38 @@ static long __bpf_get_stackid(struct bpf_map *map,
 	return id;
 }
 
+static struct perf_callchain_entry *
+bpf_get_perf_callchain(int *rctx, struct pt_regs *regs, bool kernel, bool user, int max_stack)
+{
+	struct perf_callchain_entry_ctx ctx;
+	struct perf_callchain_entry *entry;
+
+	entry = get_callchain_entry(rctx);
+	if (unlikely(!entry))
+		return NULL;
+
+	__init_perf_callchain_ctx(&ctx, entry, max_stack, false);
+	if (kernel)
+		__get_perf_callchain_kernel(&ctx, regs);
+	if (user)
+		__get_perf_callchain_user(&ctx, regs);
+	return entry;
+}
+
+static void bpf_put_callchain_entry(int rctx)
+{
+	put_callchain_entry(rctx);
+}
+
 BPF_CALL_3(bpf_get_stackid, struct pt_regs *, regs, struct bpf_map *, map,
 	   u64, flags)
 {
 	u32 max_depth = map->value_size / stack_map_data_size(map);
 	u32 skip = flags & BPF_F_SKIP_FIELD_MASK;
 	bool user = flags & BPF_F_USER_STACK;
-	struct perf_callchain_entry *trace;
+	struct perf_callchain_entry *entry;
 	bool kernel = !user;
+	int rctx, ret;
 
 	if (unlikely(flags & ~(BPF_F_SKIP_FIELD_MASK | BPF_F_USER_STACK |
 			       BPF_F_FAST_STACK_CMP | BPF_F_REUSE_STACKID)))
@@ -314,14 +336,14 @@ BPF_CALL_3(bpf_get_stackid, struct pt_regs *, regs, struct bpf_map *, map,
 	if (max_depth > sysctl_perf_event_max_stack)
 		max_depth = sysctl_perf_event_max_stack;
 
-	trace = get_perf_callchain(regs, kernel, user, max_depth,
-				   false, false);
-
-	if (unlikely(!trace))
-		/* couldn't fetch the stack trace */
+	entry = bpf_get_perf_callchain(&rctx, regs, kernel, user, max_depth);
+	if (unlikely(!entry))
 		return -EFAULT;
 
-	return __bpf_get_stackid(map, trace, flags);
+	ret = __bpf_get_stackid(map, entry, flags);
+	bpf_put_callchain_entry(rctx);
+
+	return ret;
 }
 
 const struct bpf_func_proto bpf_get_stackid_proto = {
@@ -415,6 +437,7 @@ static long __bpf_get_stack(struct pt_regs *regs, struct task_struct *task,
 	bool kernel = !user;
 	int err = -EINVAL;
 	u64 *ips;
+	int rctx;
 
 	if (unlikely(flags & ~(BPF_F_SKIP_FIELD_MASK | BPF_F_USER_STACK |
 			       BPF_F_USER_BUILD_ID)))
@@ -449,14 +472,20 @@ static long __bpf_get_stack(struct pt_regs *regs, struct task_struct *task,
 	if (trace_in)
 		trace = trace_in;
 	else if (kernel && task)
-		trace = get_callchain_entry_for_task(task, max_depth);
+		trace = get_callchain_entry_for_task(task, max_depth, &rctx);
 	else
-		trace = get_perf_callchain(regs, kernel, user, max_depth,
-					   crosstask, false);
+		trace = bpf_get_perf_callchain(&rctx, regs, kernel, user, max_depth);
 
-	if (unlikely(!trace) || trace->nr < skip) {
+	if (unlikely(!trace)) {
 		if (may_fault)
 			rcu_read_unlock();
+		goto err_fault;
+	}
+	if (trace->nr < skip) {
+		if (may_fault)
+			rcu_read_unlock();
+		if (!trace_in)
+			bpf_put_callchain_entry(rctx);
 		goto err_fault;
 	}
 
@@ -478,6 +507,9 @@ static long __bpf_get_stack(struct pt_regs *regs, struct task_struct *task,
 	/* trace/ips should not be dereferenced after this point */
 	if (may_fault)
 		rcu_read_unlock();
+
+	if (!trace_in)
+		bpf_put_callchain_entry(rctx);
 
 	if (user_build_id)
 		stack_map_get_build_id_offset(buf, trace_nr, user, may_fault);
