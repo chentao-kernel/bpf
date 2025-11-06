@@ -35,6 +35,7 @@ static DEFINE_PER_CPU(u8, callchain_recursion[PERF_NR_CONTEXTS]);
 static atomic_t nr_callchain_events;
 static DEFINE_MUTEX(callchain_mutex);
 static struct callchain_cpus_entries *callchain_cpus_entries;
+static DEFINE_PER_CPU(int, nest_level);
 
 
 __weak void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
@@ -149,6 +150,34 @@ void put_callchain_buffers(void)
 		release_callchain_buffers();
 		mutex_unlock(&callchain_mutex);
 	}
+}
+
+struct perf_callchain_entry *bpf_get_callchain_entry(int *rctx)
+{
+	int cpu;
+	struct callchain_cpus_entries *entries;
+
+	*rctx = this_cpu_inc_return(nest_level);
+	if (*rctx > PERF_NR_CONTEXTS)
+		return NULL;
+
+	entries = rcu_dereference(callchain_cpus_entries);
+	if (!entries) {
+		put_recursion_context(this_cpu_ptr(callchain_recursion), *rctx);
+		return NULL;
+	}
+
+	cpu = smp_processor_id();
+
+	return (((void *)entries->cpu_entries[cpu]) +
+		(*rctx * perf_callchain_entry__sizeof()));
+}
+
+void
+bpf_put_callchain_entry(int rctx)
+{
+	this_cpu_dec(nest_level);
+	put_recursion_context(this_cpu_ptr(callchain_recursion), rctx);
 }
 
 struct perf_callchain_entry *get_callchain_entry(int *rctx)
