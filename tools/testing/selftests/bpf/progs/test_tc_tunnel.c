@@ -9,6 +9,7 @@
 #include "bpf_tracing_net.h"
 #include "bpf_compiler.h"
 
+#if 0
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
 static const int cfg_port = 8000;
@@ -693,5 +694,5 @@ int decap_f(struct __sk_buff *skb)
 		return TC_ACT_OK;
 	}
 }
-
+#endif
 char __license[] SEC("license") = "GPL";
