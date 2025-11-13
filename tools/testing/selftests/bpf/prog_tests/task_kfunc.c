@@ -110,6 +110,32 @@ cleanup:
 	return err;
 }
 
+static void run_cmdline_success_test(const char *prog_name)
+{
+	const int stack_size = 1024 * 1024;
+	int child_pid, wstatus;
+	char *stack;
+
+	stack = (char *)malloc(stack_size);
+	if (!ASSERT_OK_PTR(stack, "clone_stack"))
+		return;
+
+	child_pid = clone(run_vpid_test, stack + stack_size,
+			  CLONE_NEWPID | SIGCHLD, (void *)prog_name);
+	if (!ASSERT_GT(child_pid, -1, "child_pid"))
+		goto cleanup;
+
+	if (!ASSERT_GT(waitpid(child_pid, &wstatus, 0), -1, "waitpid"))
+		goto cleanup;
+
+	if (WEXITSTATUS(wstatus) > 7)
+		ASSERT_OK(WEXITSTATUS(wstatus) - 7, "task_cmdline_test_failure");
+	else
+		ASSERT_OK(WEXITSTATUS(wstatus), "run_task_cmdline_test_err");
+cleanup:
+	free(stack);
+}
+
 static void run_vpid_success_test(const char *prog_name)
 {
 	const int stack_size = 1024 * 1024;
@@ -156,6 +182,10 @@ static const char * const vpid_success_tests[] = {
 	"test_task_from_vpid_invalid",
 };
 
+static const char * const cmdline_success_tests[] = {
+	"test_get_task_cmdline",
+};
+
 void test_task_kfunc(void)
 {
 	int i;
@@ -172,6 +202,13 @@ void test_task_kfunc(void)
 			continue;
 
 		run_vpid_success_test(vpid_success_tests[i]);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cmdline_success_tests); i++) {
+		if (!test__start_subtest(cmdline_success_tests[i]))
+			continue;
+
+		run_cmdline_success_test(cmdline_success_tests[i]);
 	}
 
 	RUN_TESTS(task_kfunc_failure);
