@@ -1,7 +1,19 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 /* Copyright (c) 2025 Meta Platforms, Inc. and affiliates. */
 #pragma once
-#include "bpf_arena_common.h"
+//#include "bpf_arena_common.h"
+
+#if defined(__BPF_FEATURE_ADDR_SPACE_CAST) && !defined(BPF_ARENA_FORCE_ASM)
+#define __arena __attribute__((address_space(1)))
+#define __arena_global __attribute__((address_space(1))
+#define cast_kern(ptr) /* nop for bpf prog. emitted by LLVM */
+#define cast_user(ptr) /* nop for bpf prog. emitted by LLVM */
+#else
+#define __arena
+#define __arena_global SEC(".addr_space.1")
+#define cast_kern(ptr) bpf_addr_space_cast(ptr, 0, 1)
+#define cast_user(ptr) bpf_addr_space_cast(ptr, 1, 0)
+#endif
 
 __noinline int bpf_arena_strlen(const char __arena *s __arg_arena)
 {
